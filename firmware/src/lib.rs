@@ -1,8 +1,6 @@
 #![no_std]
 
-use core::convert::Infallible;
-
-use itsybitsy_m4::hal::rtc;
+use micromath::F32Ext;
 use smart_leds::hsv::{hsv2rgb, Hsv};
 use smart_leds_trait::RGB8;
 
@@ -10,27 +8,51 @@ pub fn add(left: u32, right: u32) -> u32 {
     left + right
 }
 
-pub fn main_loop(
-    mut debug_led: impl embedded_hal::digital::v2::ToggleableOutputPin<Error = Infallible>,
-    count_timer: rtc::Rtc<rtc::Count32Mode>,
-    mut neopixels: [impl smart_leds_trait::SmartLedsWrite<Error = (), Color = RGB8>; 1],
-) -> ! {
-    let mut loop_counter: u32 = 0;
-    loop {
-        loop_counter += 1;
-        if loop_counter % 10 == 0 {
-            debug_led.toggle().unwrap();
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub struct Strips {
+    // Two strips of 100 LEDs each
+    // TODO dyncamically derive from config
+    pub strips: ([RGB8; 100], [RGB8; 100]),
+}
+
+struct Event {}
+struct Events {}
+
+pub fn calculate_new_strips(timer_counter: u32) -> Strips {
+    return Strips {
+        strips: (
+            constant_color_strip_100(
+                hsv2rgb(Hsv {
+                    hue: (timer_counter as f32 / 100.0).rem_euclid(255.0) as u8,
+                    sat: 255,
+                    val: 50,
+                }),
+                10,
+                40,
+            ),
+            constant_color_strip_100(
+                hsv2rgb(Hsv {
+                    hue: ((timer_counter as f32 * 0.001).sin() * 255.0) as u8,
+                    sat: 255,
+                    val: 50,
+                }),
+                20,
+                60,
+            ),
+        ),
+    };
+}
+
+fn constant_color_strip_100(color: RGB8, start_index: usize, end_index: usize) -> [RGB8; 100] {
+    let mut colors = [RGB8 { r: 0, g: 0, b: 0 }; 100];
+
+    for (i, current_color) in colors.iter_mut().enumerate() {
+        if i >= start_index && i <= end_index {
+            *current_color = color;
         }
-
-        let timer_count: u32 = count_timer.count32();
-
-        let colors = [hsv2rgb(Hsv {
-            hue: 69,
-            sat: 255,
-            val: 100,
-        }); 400];
-        neopixels[0].write(colors.iter().cloned()).unwrap();
     }
+
+    return colors;
 }
 
 #[cfg(test)]
@@ -38,8 +60,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+    fn constant_color_strip() {
+        let result = constant_color_strip_100(RGB8 { r: 100, g: 0, b: 0 }, 0, 1);
+
+        assert_eq!(result[0], RGB8 { r: 100, g: 0, b: 0 });
+        assert_eq!(result[1], RGB8 { r: 100, g: 0, b: 0 });
+        assert_eq!(result[2], RGB8 { r: 0, g: 0, b: 0 });
+        assert_eq!(result[98], RGB8 { r: 0, g: 0, b: 0 });
+        assert_eq!(result[99], RGB8 { r: 0, g: 0, b: 0 });
+
+        assert_eq!(result.len(), 100);
     }
 }
