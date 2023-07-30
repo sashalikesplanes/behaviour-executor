@@ -1,6 +1,9 @@
 #![no_std]
 
-use smart_leds::hsv::{Hsv, hsv2rgb};
+use core::convert::Infallible;
+
+use itsybitsy_m4::hal::rtc;
+use smart_leds::hsv::{hsv2rgb, Hsv};
 use smart_leds_trait::RGB8;
 
 pub fn add(left: u32, right: u32) -> u32 {
@@ -8,15 +11,26 @@ pub fn add(left: u32, right: u32) -> u32 {
 }
 
 pub fn main_loop(
-    neopixels: &mut [impl smart_leds_trait::SmartLedsWrite<Error = (), Color = RGB8>; 1],
-    timer_count: u32,
-) {
-    let colors = [hsv2rgb(Hsv {
-        hue: (timer_count % 255) as u8,
-        sat: 255,
-        val: 200,
-    })];
-    neopixels[0].write(colors.iter().cloned()).unwrap();
+    mut debug_led: impl embedded_hal::digital::v2::ToggleableOutputPin<Error = Infallible>,
+    count_timer: rtc::Rtc<rtc::Count32Mode>,
+    mut neopixels: [impl smart_leds_trait::SmartLedsWrite<Error = (), Color = RGB8>; 1],
+) -> ! {
+    let mut loop_counter: u32 = 0;
+    loop {
+        loop_counter += 1;
+        if loop_counter % 10 == 0 {
+            debug_led.toggle().unwrap();
+        }
+
+        let timer_count: u32 = count_timer.count32();
+
+        let colors = [hsv2rgb(Hsv {
+            hue: 69,
+            sat: 255,
+            val: 100,
+        }); 400];
+        neopixels[0].write(colors.iter().cloned()).unwrap();
+    }
 }
 
 #[cfg(test)]
