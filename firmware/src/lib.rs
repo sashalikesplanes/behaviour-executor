@@ -46,6 +46,7 @@ pub enum Event {
 pub struct EventWrapper {
     pub event: Event,
     pub active: bool,
+    pub finished: bool,
     pub start_time: u32,
 }
 
@@ -65,7 +66,7 @@ pub struct Strips {
 pub fn calculate_new_strips(
     timer_counter: u32,
     color: RGB8,
-    active_events: &Vec<EventWrapper, 2048>,
+    active_events: &mut Vec<EventWrapper, 2048>,
 ) -> Strips {
     return Strips {
         strips: (
@@ -78,16 +79,30 @@ pub fn calculate_new_strips(
 fn message(
     strip_idx: u8,
     timer_counter: u32,
-    active_events: &Vec<EventWrapper, 2048>,
+    active_events: &mut Vec<EventWrapper, 2048>,
 ) -> [RGB8; 200] {
     let mut colors = [RGB8 { r: 0, g: 0, b: 0 }; 200];
-    active_events.iter().for_each(|event| {
-//         if !event.active {
-//             return;
-//         }
-        match &event.event {
+    let mut mut_events_iter = active_events.iter_mut().peekable();
+    while let Some(event) = mut_events_iter.next() {
+        if !event.active {
+            continue;
+        }
+
+        match &mut event.event {
             Event::Message(e) => {
+                let duration = (((e.end_idx - e.start_idx) as f32).abs() + 1.0 + e.message_width as f32 / 2.0) / e.pace;
+                if event.active && timer_counter > event.start_time + duration as u32 {
+                    // TODO, we can remove this event from the active events
+                    event.active = false;
+                    event.finished = true;
+                    mut_events_iter.peek_mut().map(|next_event| {
+                        next_event.start_time = timer_counter;
+                        next_event.active = true;
+                    });
+                    continue;
+                }
                 let position = (timer_counter - event.start_time) as f32 * e.pace;
+
                 let (start_idx, end_idx) = if e.start_idx < e.end_idx {
                     (e.start_idx, e.end_idx)
                 } else {
@@ -114,10 +129,7 @@ fn message(
             }
             _ => {}
         }
-    });
-
-    // let duration: f32 =
-
+    }
     colors
 }
 

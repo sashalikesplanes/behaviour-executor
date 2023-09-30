@@ -111,6 +111,21 @@ fn main() -> ! {
         ACTIVE_EVENTS.push(EventWrapper {
             event: Event::Message(MessageEvent {
                 color: [100, 100, 100],
+                pace: 0.01,
+                message_width: 5,
+                strip_idx: 0,
+                start_idx: 0,
+                end_idx: 100,
+                start_node: 0,
+                end_node: 0,
+            }),
+            finished: false,
+            start_time: timer_count,
+            active: true,
+        });
+        ACTIVE_EVENTS.push(EventWrapper {
+            event: Event::Message(MessageEvent {
+                color: [100, 100, 100],
                 pace: 0.001,
                 message_width: 5,
                 strip_idx: 0,
@@ -119,8 +134,9 @@ fn main() -> ! {
                 start_node: 0,
                 end_node: 0,
             }),
+            finished: false,
             start_time: timer_count,
-            active: true,
+            active: false,
         });
     }
 
@@ -141,6 +157,7 @@ fn main() -> ! {
                     ACTIVE_EVENTS.push(
                         match json.get_key_value("type").unwrap().read_string().unwrap() {
                             "clear" => EventWrapper {
+                                finished: false,
                                 event: Event::Clear(ClearEvent),
                                 start_time: timer_count,
                                 active: true,
@@ -153,6 +170,7 @@ fn main() -> ! {
                                 // let fade_power = json.get_key_value("fade_power").unwrap().read_integer().unwrap() as u32;
                                 EventWrapper {
                                     start_time: timer_count,
+                                    finished: false,
                                     event: Event::Constant(ConstantEvent {
                                         color: [0, 0, 0],
                                         duration: 0,
@@ -179,6 +197,8 @@ fn main() -> ! {
 
                                 EventWrapper {
                                     start_time: timer_count,
+
+                                    finished: false,
                                     event: Event::Message(MessageEvent {
                                         color: [color[0], color[1], color[2]],
                                         pace: json
