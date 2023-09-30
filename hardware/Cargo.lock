@@ -16,17 +16,28 @@ dependencies = [
 name = "app"
 version = "0.1.0"
 dependencies = [
+ "arrform",
  "cortex-m",
+ "cortex-m-semihosting",
  "firmware",
  "heapless",
  "itsybitsy_m4",
+ "microjson",
  "panic-halt",
  "panic-probe",
  "panic-reset",
  "smart-leds",
  "smart-leds-trait",
+ "usb-device",
+ "usbd-serial",
  "ws2812-timer-delay",
 ]
+
+[[package]]
+name = "arrform"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e7cf566ecc5c9d82b973e81d30babf6583c9b497f86295c952d538c3254ef4e6"
 
 [[package]]
 name = "atomic-polyfill"
@@ -48,6 +59,7 @@ dependencies = [
  "bitflags",
  "cortex-m",
  "embedded-hal",
+ "jlink_rtt",
  "modular-bitfield",
  "nb 0.1.3",
  "num-traits",
@@ -56,6 +68,7 @@ dependencies = [
  "replace_with",
  "seq-macro",
  "typenum",
+ "usb-device",
  "vcell",
  "void",
 ]
@@ -154,6 +167,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cortex-m-semihosting"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c23234600452033cc77e4b761e740e02d2c4168e11dbf36ab14a0f58973592b0"
+dependencies = [
+ "cortex-m",
+]
+
+[[package]]
 name = "critical-section"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -213,7 +235,14 @@ dependencies = [
  "bitbang-hal",
  "cortex-m-rt",
  "smart-leds",
+ "usb-device",
 ]
+
+[[package]]
+name = "jlink_rtt"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42f6af40154f64bd7095b5245d6933fef99b0a28c432b38a676cfafaa0aedfc2"
 
 [[package]]
 name = "lock_api"
@@ -224,6 +253,12 @@ dependencies = [
  "autocfg",
  "scopeguard",
 ]
+
+[[package]]
+name = "microjson"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eab0b15327cee039b97f25f19ad54a8d6fa053b48c9b580b9b1f116ffc436b2c"
 
 [[package]]
 name = "micromath"
@@ -463,6 +498,23 @@ name = "unicode-ident"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "301abaae475aa91687eb82514b328ab47a211a533026cb25fc3e519b86adfc3c"
+
+[[package]]
+name = "usb-device"
+version = "0.2.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f6cc3adc849b5292b4075fc0d5fdcf2f24866e88e336dd27a8943090a520508"
+
+[[package]]
+name = "usbd-serial"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db75519b86287f12dcf0d171c7cf4ecc839149fe9f3b720ac4cfce52959e1dfe"
+dependencies = [
+ "embedded-hal",
+ "nb 0.1.3",
+ "usb-device",
+]
 
 [[package]]
 name = "vcell"

@@ -1,4 +1,4 @@
-# Behvaiour-Executor
+Behvaiour-Executor
 
 Code for an ItsyBitsy M4 Express to executes a variety of behabiours based on the events recieved via USB serial.
 
