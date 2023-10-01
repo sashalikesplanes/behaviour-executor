@@ -8,7 +8,7 @@ use bsp::hal::{self, rtc, usb::UsbBus};
 use cortex_m::interrupt::free as disable_interrupts;
 use cortex_m::peripheral::NVIC;
 use firmware::json_events::add_events_from_json;
-use firmware::new_strips::calculate_new_strips;
+use firmware::new_strips::{calculate_new_strips, MAX_EVENTS};
 use firmware::starting_events::add_starting_events;
 use firmware::structs::EventWrapper;
 use hal::clock::GenericClockController;
@@ -145,10 +145,11 @@ static mut USB_BUS: Option<UsbDevice<UsbBus>> = None;
 static mut USB_SERIAL: Option<SerialPort<UsbBus>> = None;
 
 // Only for main thread
-static mut ACTIVE_EVENTS: Vec<EventWrapper, 2048> = Vec::new();
+static mut ACTIVE_EVENTS: Vec<EventWrapper, MAX_EVENTS> = Vec::new();
 
 // Shared between main and USB interrupts
-static mut JSON_BUF: [u8; 2048] = [0; 2048];
+const MAX_JSON_LEN: usize = 4096;
+static mut JSON_BUF: [u8; MAX_JSON_LEN] = [0; MAX_JSON_LEN];
 static mut JSON_BUF_LEN: usize = 0;
 
 fn poll_usb() {

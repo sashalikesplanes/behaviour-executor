@@ -16,7 +16,6 @@ pub fn paint_message_event(
 ) -> () {
     let event_position = (timer_counter - start_time) as f32 * event.pace;
 
-
     if event.start_idx < event.end_idx {
         for idx in event.start_idx..event.end_idx {
             let pixel_position = (idx - event.start_idx) as f32;

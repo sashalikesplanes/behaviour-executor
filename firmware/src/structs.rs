@@ -23,8 +23,6 @@ pub struct MessageEvent {
     pub strip_idx: usize,
     pub start_idx: usize,
     pub end_idx: usize,
-    pub start_node: u8,
-    pub end_node: u8,
 }
 
 pub struct ClearEvent;
@@ -51,7 +49,7 @@ impl Duration for EventWrapper {
     fn duration(&self) -> f32 {
         match &self.event {
             Event::Message(e) => {
-                (((e.end_idx - e.start_idx) as f32).abs() + 1.0 + e.message_width as f32 / 2.0)
+                ((e.end_idx as f32 - e.start_idx as f32).abs() + 1.0 + e.message_width as f32 / 2.0)
                     / e.pace
             },
             Event::Clear(_) => 0.01,
