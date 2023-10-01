@@ -196,6 +196,7 @@ name = "firmware"
 version = "0.1.0"
 dependencies = [
  "heapless",
+ "microjson",
  "micromath",
  "smart-leds",
  "smart-leds-trait",

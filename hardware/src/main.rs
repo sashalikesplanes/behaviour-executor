@@ -7,18 +7,18 @@ use bsp::hal::timer::TimerCounter;
 use bsp::hal::{self, rtc, usb::UsbBus};
 use cortex_m::interrupt::free as disable_interrupts;
 use cortex_m::peripheral::NVIC;
-use firmware::{
-    calculate_new_strips, ClearEvent, ConstantEvent, Event, EventWrapper, MessageEvent, Pixel,
-};
+use firmware::starting_events::add_starting_events;
+use firmware::structs::EventWrapper;
+use firmware::json_events::add_events_from_json;
+use firmware::{calculate_new_strips};
 use hal::clock::GenericClockController;
 use hal::pac::interrupt;
 use hal::pac::{CorePeripherals, Peripherals};
 use hal::prelude::*;
 use heapless::Vec;
 use itsybitsy_m4 as bsp;
-use microjson::JSONValue;
 use panic_halt as _;
-use smart_leds_trait::{SmartLedsWrite, RGB8};
+use smart_leds_trait::SmartLedsWrite;
 use usb_device::{bus::UsbBusAllocator, prelude::*};
 use usbd_serial::{SerialPort, USB_CLASS_CDC};
 use ws2812_timer_delay::Ws2812;
@@ -90,13 +90,6 @@ fn main() -> ! {
         NVIC::unmask(interrupt::USB_TRCPT1);
     }
 
-    let mut loop_counter: u32 = 0;
-    let current_color = RGB8 {
-        r: 100,
-        g: 100,
-        b: 100,
-    };
-
     // Logging example
     cortex_m::interrupt::free(|_| unsafe {
         if USB_BUS.as_mut().is_some() {
@@ -107,152 +100,26 @@ fn main() -> ! {
     });
 
     let timer_count: u32 = count_timer.count32();
-    unsafe {
-        ACTIVE_EVENTS.push(EventWrapper {
-            event: Event::Message(MessageEvent {
-                color: [100, 100, 100],
-                pace: 0.01,
-                message_width: 5,
-                strip_idx: 0,
-                start_idx: 0,
-                end_idx: 100,
-                start_node: 0,
-                end_node: 0,
-            }),
-            finished: false,
-            start_time: timer_count,
-            active: true,
-        });
-        ACTIVE_EVENTS.push(EventWrapper {
-            event: Event::Message(MessageEvent {
-                color: [100, 100, 100],
-                pace: 0.001,
-                message_width: 5,
-                strip_idx: 0,
-                start_idx: 0,
-                end_idx: 100,
-                start_node: 0,
-                end_node: 0,
-            }),
-            finished: false,
-            start_time: timer_count,
-            active: false,
-        });
-    }
+    unsafe { add_starting_events(&mut ACTIVE_EVENTS, timer_count) }
 
+    // Flash the LED every 10 loops
+    let mut loop_counter: u32 = 0;
     loop {
         loop_counter += 1;
         if loop_counter % 10 == 0 {
             debug_led.toggle().unwrap();
         }
-        let timer_count: u32 = count_timer.count32();
 
+        let timer_count: u32 = count_timer.count32();
+        // This should be safe, as disable_interrupts stops USB interrupts (only place which uses JSON_BUF)
+        // and only the main loop uses ACTIVE_EVENTS
         disable_interrupts(|_| unsafe {
             let mut pos = 0;
             while pos < JSON_BUF_LEN {
                 if JSON_BUF[pos] == b'\n' {
                     let json_str = core::str::from_utf8(&JSON_BUF[0..=pos]).unwrap();
-                    let json = JSONValue::parse(json_str).unwrap();
 
-                    ACTIVE_EVENTS.push(
-                        match json.get_key_value("type").unwrap().read_string().unwrap() {
-                            "clear" => EventWrapper {
-                                finished: false,
-                                event: Event::Clear(ClearEvent),
-                                start_time: timer_count,
-                                active: true,
-                            },
-                            "constant" => {
-                                // let color: Vec<u8, 3> = json.get_key_value("color").unwrap().iter_array().unwrap().map(|x| x.read_integer().unwrap() as u8).collect();
-                                // let duration = json.get_key_value("duration").unwrap().read_integer().unwrap() as u32;
-                                // let fadein_duration = json.get_key_value("fadein_duration").unwrap().read_integer().unwrap() as u32;
-                                // let fadeout_duration = json.get_key_value("fadeout_duration").unwrap().read_integer().unwrap() as u32;
-                                // let fade_power = json.get_key_value("fade_power").unwrap().read_integer().unwrap() as u32;
-                                EventWrapper {
-                                    start_time: timer_count,
-                                    finished: false,
-                                    event: Event::Constant(ConstantEvent {
-                                        color: [0, 0, 0],
-                                        duration: 0,
-                                        fadein_duration: 0,
-                                        fadeout_duration: 0,
-                                        fade_power: 0,
-                                        pixels: [Pixel {
-                                            strip_idx: 0,
-                                            pixel_idx: 0,
-                                        }; 10],
-                                    }),
-                                    // construct
-                                    active: true,
-                                }
-                            }
-                            "message" => {
-                                let color: Vec<u8, 3> = json
-                                    .get_key_value("color")
-                                    .unwrap()
-                                    .iter_array()
-                                    .unwrap()
-                                    .map(|x| x.read_integer().unwrap() as u8)
-                                    .collect();
-
-                                EventWrapper {
-                                    start_time: timer_count,
-
-                                    finished: false,
-                                    event: Event::Message(MessageEvent {
-                                        color: [color[0], color[1], color[2]],
-                                        pace: json
-                                            .get_key_value("pace")
-                                            .unwrap()
-                                            .read_float()
-                                            .unwrap()
-                                            as f32,
-                                        message_width: json
-                                            .get_key_value("message_width")
-                                            .unwrap()
-                                            .read_integer()
-                                            .unwrap()
-                                            as u16,
-                                        strip_idx: json
-                                            .get_key_value("strip_idx")
-                                            .unwrap()
-                                            .read_integer()
-                                            .unwrap()
-                                            as u8,
-                                        start_idx: json
-                                            .get_key_value("start_idx")
-                                            .unwrap()
-                                            .read_integer()
-                                            .unwrap()
-                                            as usize,
-                                        end_idx: json
-                                            .get_key_value("end_idx")
-                                            .unwrap()
-                                            .read_integer()
-                                            .unwrap()
-                                            as usize,
-                                        start_node: json
-                                            .get_key_value("start_node")
-                                            .unwrap()
-                                            .read_integer()
-                                            .unwrap()
-                                            as u8,
-                                        end_node: json
-                                            .get_key_value("end_node")
-                                            .unwrap()
-                                            .read_integer()
-                                            .unwrap()
-                                            as u8,
-                                    }),
-                                    active: true,
-                                }
-                            }
-                            _ => panic!("Unknown event type"),
-                        },
-                    );
-
-                    // now iterate over the json through the next keys adding the events to the
-                    // event list
+                    add_events_from_json(&mut ACTIVE_EVENTS, json_str, timer_count);
 
                     JSON_BUF.copy_within(pos + 1..JSON_BUF_LEN, 0);
                     JSON_BUF_LEN -= pos + 1;
@@ -263,13 +130,11 @@ fn main() -> ! {
             }
         });
 
-        // This should be safe as only the main loop uses ACTIBE_EVENTS
-        unsafe {
-            let strips = calculate_new_strips(timer_count, current_color, &mut ACTIVE_EVENTS);
-
-            neopixels.0.write(strips.strips.0.iter().cloned()).unwrap();
-            neopixels.1.write(strips.strips.1.iter().cloned()).unwrap();
-        }
+        let timer_count: u32 = count_timer.count32();
+        // This should be safe as only the main loop uses ACTIVE_EVENTS
+        let strips = unsafe { calculate_new_strips(timer_count, &mut ACTIVE_EVENTS) };
+        neopixels.0.write(strips.strips.0.iter().cloned()).unwrap();
+        neopixels.1.write(strips.strips.1.iter().cloned()).unwrap();
     }
 }
 
@@ -296,7 +161,6 @@ fn poll_usb() {
                         if i >= count {
                             break;
                         }
-
                         JSON_BUF[JSON_BUF_LEN] = *c;
                         JSON_BUF_LEN += 1;
                     }

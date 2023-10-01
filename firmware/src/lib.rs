@@ -1,73 +1,30 @@
 #![no_std]
-
+pub mod structs;
+pub mod starting_events;
+pub mod json_events;
 use heapless::Vec;
+use microjson::JSONValue;
 use micromath::F32Ext;
 use smart_leds_trait::RGB8;
-
-#[derive(Debug, Copy, Clone)]
-pub struct Pixel {
-    pub strip_idx: u8,
-    pub pixel_idx: u16,
-}
-
-#[derive(Debug)]
-pub struct ConstantEvent {
-    pub color: [u8; 3],
-    pub duration: u32,
-    pub fadein_duration: u32,
-    pub fadeout_duration: u32,
-    pub fade_power: u8,
-    pub pixels: [Pixel; 10], // Fixed size array due to stack allocation
-}
-
-#[derive(Debug)]
-pub struct MessageEvent {
-    pub color: [u8; 3],
-    pub message_width: u16,
-    pub pace: f32,
-    pub strip_idx: u8,
-    pub start_idx: usize,
-    pub end_idx: usize,
-    pub start_node: u8,
-    pub end_node: u8,
-}
-
-#[derive(Debug)]
-pub struct ClearEvent;
-
-#[derive(Debug)]
-pub enum Event {
-    Message(MessageEvent),
-    Clear(ClearEvent),
-    Constant(ConstantEvent),
-}
-
-#[derive(Debug)]
-pub struct EventWrapper {
-    pub event: Event,
-    pub active: bool,
-    pub finished: bool,
-    pub start_time: u32,
-}
-
-pub fn add(left: u32, right: u32) -> u32 {
-    left + right
-}
+use structs::{EventWrapper, Pixel, ClearEvent, ConstantEvent, Event, MessageEvent};
 
 const INTENSITY_THESHOLD: f32 = 0.05;
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct Strips {
     // Two strips of 100 LEDs each
     // TODO dyncamically derive from config
     pub strips: ([RGB8; 200], [RGB8; 200]),
 }
 
+
 pub fn calculate_new_strips(
     timer_counter: u32,
-    color: RGB8,
     active_events: &mut Vec<EventWrapper, 2048>,
 ) -> Strips {
+    // Here iterate over the events,
+    // create a color per strip and pass it to each event executor which will paint onto it
+    // also here deal with next event logic
     return Strips {
         strips: (
             message(0, timer_counter, active_events),
@@ -90,7 +47,9 @@ fn message(
 
         match &mut event.event {
             Event::Message(e) => {
-                let duration = (((e.end_idx - e.start_idx) as f32).abs() + 1.0 + e.message_width as f32 / 2.0) / e.pace;
+                let duration =
+                    (((e.end_idx - e.start_idx) as f32).abs() + 1.0 + e.message_width as f32 / 2.0)
+                        / e.pace;
                 if event.active && timer_counter > event.start_time + duration as u32 {
                     // TODO, we can remove this event from the active events
                     event.active = false;
@@ -132,13 +91,6 @@ fn message(
     }
     colors
 }
-
-//def get_intensity(elapsed_time, pixel_offset):
-// if pixel_offset > elapsed_time * message_config["pace"]:
-// return 0
-// if pixel_offset < elapsed_time * message_config["pace"] - message_config["message_width"] / 2:
-// return 0
-// return -sin((pixel_offset - elapsed_time * message_config["pace"]) / message_config["message_width"] * pi * 2)
 
 fn get_message_pixel_intensity(elapsed_time: u32, pixel_offset: f32, event: &MessageEvent) -> f32 {
     if pixel_offset > elapsed_time as f32 * event.pace as f32 + event.message_width as f32 / 2.0 {
