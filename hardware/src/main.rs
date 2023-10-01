@@ -10,7 +10,7 @@ use cortex_m::peripheral::NVIC;
 use firmware::starting_events::add_starting_events;
 use firmware::structs::EventWrapper;
 use firmware::json_events::add_events_from_json;
-use firmware::{calculate_new_strips};
+use firmware::new_strips::calculate_new_strips;
 use hal::clock::GenericClockController;
 use hal::pac::interrupt;
 use hal::pac::{CorePeripherals, Peripherals};
