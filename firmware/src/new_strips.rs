@@ -1,5 +1,5 @@
 use crate::{
-    behaviours::{constant_color_strip_200, paint_message_event},
+    behaviours::paint_message_event,
     structs::{Duration, EventWrapper},
 };
 use heapless::Vec;
@@ -8,7 +8,6 @@ use smart_leds_trait::RGB8;
 const STRIP_INDICES: (usize, usize) = (0, 1);
 pub const STRIP_LENGTH: usize = 200;
 pub const MAX_EVENTS: usize = 2047;
-
 
 #[derive(Copy, Clone)]
 pub struct Strips {

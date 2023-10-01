@@ -1,6 +1,6 @@
 use crate::{
     new_strips::MAX_EVENTS,
-    structs::{ClearEvent, ConstantEvent, Event, EventWrapper, MessageEvent, Pixel},
+    structs::{ConstantEvent, Event, EventWrapper, MessageEvent, Pixel},
 };
 use heapless::Vec;
 use microjson::{JSONValue, JSONValueType};
@@ -16,18 +16,9 @@ pub fn add_events_from_json(
             process_message_node(&json, timer_count, events, true);
         }
         "clear" => {
-            // clear event always sent by itself
-            EventWrapper {
-                event: Event::Clear(ClearEvent),
-                start_time: Some(timer_count),
-            };
+            events.clear();
         }
         "constant" => {
-            // let color: Vec<u8, 3> = json.get_key_value("color").unwrap().iter_array().unwrap().map(|x| x.read_integer().unwrap() as u8).collect();
-            // let duration = json.get_key_value("duration").unwrap().read_integer().unwrap() as u32;
-            // let fadein_duration = json.get_key_value("fadein_duration").unwrap().read_integer().unwrap() as u32;
-            // let fadeout_duration = json.get_key_value("fadeout_duration").unwrap().read_integer().unwrap() as u32;
-            // let fade_power = json.get_key_value("fade_power").unwrap().read_integer().unwrap() as u32;
             EventWrapper {
                 start_time: Some(timer_count),
                 event: Event::Constant(ConstantEvent {

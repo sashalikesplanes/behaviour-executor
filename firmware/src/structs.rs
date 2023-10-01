@@ -25,11 +25,8 @@ pub struct MessageEvent {
     pub end_idx: usize,
 }
 
-pub struct ClearEvent;
-
 pub enum Event {
     Message(MessageEvent),
-    Clear(ClearEvent),
     Constant(ConstantEvent),
 }
 
@@ -52,7 +49,6 @@ impl Duration for EventWrapper {
                 ((e.end_idx as f32 - e.start_idx as f32).abs() + 1.0 + e.message_width as f32 / 2.0)
                     / e.pace
             },
-            Event::Clear(_) => 0.01,
             Event::Constant(e) => e.duration as f32,
         }
     }
