@@ -7,10 +7,10 @@ use bsp::hal::timer::TimerCounter;
 use bsp::hal::{self, rtc, usb::UsbBus};
 use cortex_m::interrupt::free as disable_interrupts;
 use cortex_m::peripheral::NVIC;
-use firmware::starting_events::add_starting_events;
-use firmware::structs::EventWrapper;
 use firmware::json_events::add_events_from_json;
 use firmware::new_strips::calculate_new_strips;
+use firmware::starting_events::add_starting_events;
+use firmware::structs::EventWrapper;
 use hal::clock::GenericClockController;
 use hal::pac::interrupt;
 use hal::pac::{CorePeripherals, Peripherals};
@@ -99,9 +99,6 @@ fn main() -> ! {
         }
     });
 
-    let timer_count: u32 = count_timer.count32();
-    unsafe { add_starting_events(&mut ACTIVE_EVENTS, timer_count) }
-
     // Flash the LED every 10 loops
     let mut loop_counter: u32 = 0;
     loop {
@@ -111,6 +108,13 @@ fn main() -> ! {
         }
 
         let timer_count: u32 = count_timer.count32();
+
+        if loop_counter == 100 {
+            unsafe {
+                add_starting_events(&mut ACTIVE_EVENTS, timer_count);
+            }
+        }
+
         // This should be safe, as disable_interrupts stops USB interrupts (only place which uses JSON_BUF)
         // and only the main loop uses ACTIVE_EVENTS
         disable_interrupts(|_| unsafe {
@@ -129,8 +133,6 @@ fn main() -> ! {
                 }
             }
         });
-
-        let timer_count: u32 = count_timer.count32();
         // This should be safe as only the main loop uses ACTIVE_EVENTS
         let strips = unsafe { calculate_new_strips(timer_count, &mut ACTIVE_EVENTS) };
         neopixels.0.write(strips.strips.0.iter().cloned()).unwrap();

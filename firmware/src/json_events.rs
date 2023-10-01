@@ -11,10 +11,8 @@ pub fn add_events_from_json(
     events.push(
         match json.get_key_value("type").unwrap().read_string().unwrap() {
             "clear" => EventWrapper {
-                finished: false,
                 event: Event::Clear(ClearEvent),
-                start_time: timer_count,
-                active: true,
+                start_time: Some(timer_count),
             },
             "constant" => {
                 // let color: Vec<u8, 3> = json.get_key_value("color").unwrap().iter_array().unwrap().map(|x| x.read_integer().unwrap() as u8).collect();
@@ -23,10 +21,9 @@ pub fn add_events_from_json(
                 // let fadeout_duration = json.get_key_value("fadeout_duration").unwrap().read_integer().unwrap() as u32;
                 // let fade_power = json.get_key_value("fade_power").unwrap().read_integer().unwrap() as u32;
                 EventWrapper {
-                    start_time: timer_count,
-                    finished: false,
+                    start_time: Some(timer_count),
                     event: Event::Constant(ConstantEvent {
-                        color: [0, 0, 0],
+                        color: smart_leds_trait::RGB { r: 0, g: 0, b: 0 },
                         duration: 0,
                         fadein_duration: 0,
                         fadeout_duration: 0,
@@ -36,8 +33,6 @@ pub fn add_events_from_json(
                             pixel_idx: 0,
                         }; 10],
                     }),
-                    // construct
-                    active: true,
                 }
             }
             "message" => {
@@ -50,11 +45,9 @@ pub fn add_events_from_json(
                     .collect();
 
                 EventWrapper {
-                    start_time: timer_count,
-
-                    finished: false,
+                    start_time: Some(timer_count),
                     event: Event::Message(MessageEvent {
-                        color: [color[0], color[1], color[2]],
+                        color: smart_leds_trait::RGB { r: color[0], g: color[1], b: color[2] },
                         pace: json.get_key_value("pace").unwrap().read_float().unwrap() as f32,
                         message_width: json
                             .get_key_value("message_width")
@@ -65,7 +58,7 @@ pub fn add_events_from_json(
                             .get_key_value("strip_idx")
                             .unwrap()
                             .read_integer()
-                            .unwrap() as u8,
+                            .unwrap() as usize,
                         start_idx: json
                             .get_key_value("start_idx")
                             .unwrap()
@@ -87,7 +80,6 @@ pub fn add_events_from_json(
                             .read_integer()
                             .unwrap() as u8,
                     }),
-                    active: true,
                 }
             }
             _ => panic!("Unknown event type"),
