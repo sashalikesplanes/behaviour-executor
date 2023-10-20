@@ -1,19 +1,14 @@
 use micromath::F32Ext;
 use smart_leds_trait::RGB8;
 
-#[derive(Copy, Clone)]
-pub struct Pixel {
-    pub strip_idx: u8,
-    pub pixel_idx: u16,
-}
-
 pub struct ConstantEvent {
     pub color: RGB8,
     pub duration: u32,
     pub fadein_duration: u32,
     pub fadeout_duration: u32,
     pub fade_power: u8,
-    pub pixels: [Pixel; 10], // Fixed size array due to stack allocation
+    pub strip_idx: usize,
+    pub pixel_idx: usize,
 }
 
 pub struct MessageEvent {
