@@ -1,6 +1,6 @@
 use core::f32::consts::PI;
 
-use crate::structs::{Event, EventWrapper, MessageEvent};
+use crate::structs::{Event, EventWrapper, MessageEvent, ConstantEvent};
 use crate::{new_strips::STRIP_LENGTH, structs::Duration};
 use heapless::Vec;
 use micromath::F32Ext;
@@ -36,9 +36,26 @@ pub fn paint_message_event(
                 r: (event.color.r as f32 * intensity + current_color.r as f32).round().min(255.0) as u8,
                 g: (event.color.g as f32 * intensity + current_color.g as f32).round().min(255.0) as u8,
                 b: (event.color.b as f32 * intensity + current_color.b as f32).round().min(255.0) as u8,
-            } + strip[idx as usize];
+            };
         }
     }
+}
+
+pub fn paint_solid_pixel(
+    strip: &mut [RGB8; STRIP_LENGTH],
+    event: &ConstantEvent,
+    start_time: u32,
+    timer_counter: u32,
+) -> () {
+    // TODO - smoothing
+    let intensity = 1.0;
+
+    let current_color = strip[event.pixel_idx as usize];
+    strip[event.pixel_idx as usize] = RGB8 {
+        r: (event.color.r as f32 * intensity + current_color.r as f32).round().min(255.0) as u8,
+        g: (event.color.g as f32 * intensity + current_color.g as f32).round().min(255.0) as u8,
+        b: (event.color.b as f32 * intensity + current_color.b as f32).round().min(255.0) as u8,
+    };
 }
 
 fn get_message_pixel_intensity(

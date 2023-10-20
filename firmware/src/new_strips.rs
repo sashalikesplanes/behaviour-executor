@@ -51,6 +51,13 @@ pub fn calculate_new_strips(
                         timer_counter,
                     )
                 }
+            },
+            crate::structs::Event::Constant(e) => {
+                if e.strip_idx == STRIP_INDICES.0 {
+                    paint_solid_pixel(&mut strips.strips.0, e, event.start_time.unwrap(), timer_counter);
+                } else if e.strip_idx == STRIP_INDICES.1 {
+                    paint_solid_pixel(&mut strips.strips.1, e, event.start_time.unwrap(), timer_counter);
+                }
             }
             // TODO deal with constant event
             _ => {}
