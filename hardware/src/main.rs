@@ -8,7 +8,7 @@ use bsp::hal::{self, rtc, usb::UsbBus};
 use cortex_m::interrupt::free as disable_interrupts;
 use cortex_m::peripheral::NVIC;
 use firmware::json_events::add_events_from_json;
-use firmware::new_strips::{calculate_new_strips, MAX_EVENTS};
+use firmware::new_strips::{calculate_new_strips, MAX_EVENTS, SERIAL_NUM};
 use firmware::starting_events::add_starting_events;
 use firmware::structs::EventWrapper;
 use hal::clock::GenericClockController;
@@ -75,7 +75,7 @@ fn main() -> ! {
             UsbDeviceBuilder::new(bus_allocator, UsbVidPid(0x16c0, 0x27dd))
                 .manufacturer("Fake company")
                 .product("Serial port")
-                .serial_number("TEST")
+                .serial_number(SERIAL_NUM)
                 .device_class(USB_CLASS_CDC)
                 .build(),
         );
