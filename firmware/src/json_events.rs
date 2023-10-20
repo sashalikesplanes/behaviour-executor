@@ -1,9 +1,10 @@
 use crate::{
-    new_strips::MAX_EVENTS,
-    structs::{ConstantEvent, Event, EventWrapper, MessageEvent, Pixel},
+    new_strips::{MAX_EVENTS, STRIP_INDICES},
+    structs::{ConstantEvent, Event, EventWrapper, MessageEvent},
 };
 use heapless::Vec;
 use microjson::{JSONValue, JSONValueType};
+use smart_leds_trait::RGB8;
 
 pub fn add_events_from_json(
     events: &mut Vec<EventWrapper, MAX_EVENTS>,
@@ -19,20 +20,7 @@ pub fn add_events_from_json(
             events.clear();
         }
         "constant" => {
-            EventWrapper {
-                start_time: Some(timer_count),
-                event: Event::Constant(ConstantEvent {
-                    color: smart_leds_trait::RGB { r: 0, g: 0, b: 0 },
-                    duration: 0,
-                    fadein_duration: 0,
-                    fadeout_duration: 0,
-                    fade_power: 0,
-                    pixels: [Pixel {
-                        strip_idx: 0,
-                        pixel_idx: 0,
-                    }; 10],
-                }),
-            };
+            process_constant_node(&json, timer_count, events, true);
         }
         _ => panic!("Unknown event type"),
     };
@@ -47,10 +35,19 @@ fn process_message_node(
     if node.value_type == JSONValueType::Null {
         return;
     }
-    events.push(EventWrapper {
-        start_time: if first_node { Some(timer_count) } else { None },
-        event: Event::Message(parse_message_event(&node)),
-    });
+
+    let strip_idx: usize = node
+        .get_key_value("strip_idx")
+        .unwrap()
+        .read_integer()
+        .unwrap() as usize;
+
+    if strip_idx == STRIP_INDICES.0 || strip_idx == STRIP_INDICES.1 {
+        events.push(EventWrapper {
+            start_time: if first_node { Some(timer_count) } else { None },
+            event: Event::Message(parse_message_event(&node)),
+        });
+    }
 
     let next = node.get_key_value("next").unwrap();
     process_message_node(&next, timer_count, events, false);
@@ -93,4 +90,77 @@ fn parse_message_event(json: &JSONValue) -> MessageEvent {
             .read_integer()
             .unwrap() as usize,
     }
+}
+
+fn process_constant_node(
+    node: &JSONValue,
+    timer_count: u32,
+    events: &mut Vec<EventWrapper, MAX_EVENTS>,
+    first_node: bool,
+) {
+    // constant events never have a next
+    if node.value_type == JSONValueType::Null {
+        return;
+    }
+
+    let color: Vec<u8, 3> = node
+        .get_key_value("color")
+        .unwrap()
+        .iter_array()
+        .unwrap()
+        .map(|x| x.read_integer().unwrap() as u8)
+        .collect();
+
+    let duration: u32 = node
+        .get_key_value("duration")
+        .unwrap()
+        .read_integer()
+        .unwrap() as u32;
+    let fadein_duration: u32 = node
+        .get_key_value("fadein_duration")
+        .unwrap()
+        .read_integer()
+        .unwrap() as u32;
+    let fadeout_duration: u32 = node
+        .get_key_value("fadeout_duration")
+        .unwrap()
+        .read_integer()
+        .unwrap() as u32;
+
+    // loop over the pixels array of the json
+    node.get_key_value("pixels")
+        .unwrap()
+        .iter_array()
+        .unwrap()
+        .for_each(|pixel| {
+            let pixel_idx: usize = pixel
+                .get_key_value("pixel_idx")
+                .unwrap()
+                .read_integer()
+                .unwrap() as usize;
+            let strip_idx: usize = pixel
+                .get_key_value("strip_idx")
+                .unwrap()
+                .read_integer()
+                .unwrap() as usize;
+
+            if strip_idx == STRIP_INDICES.0 || strip_idx == STRIP_INDICES.1 {
+                events.push(EventWrapper {
+                    start_time: Some(timer_count),
+                    event: Event::Constant(ConstantEvent {
+                        color: RGB8 {
+                            r: color[0],
+                            g: color[1],
+                            b: color[2],
+                        },
+                        duration,
+                        fadein_duration,
+                        fadeout_duration,
+                        fade_power: 0,
+                        pixel_idx,
+                        strip_idx,
+                    }),
+                });
+            }
+        })
 }
