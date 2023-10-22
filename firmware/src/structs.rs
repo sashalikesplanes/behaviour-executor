@@ -20,6 +20,15 @@ pub struct MessageEvent {
     pub end_idx: usize,
 }
 
+pub struct AttackDecayEvent {
+    pub color: RGB8,
+    pub attack_duration: f32,
+    pub decay_duration: f32,
+    pub strip_idx: usize,
+    pub start_idx: usize,
+    pub end_idx: usize,
+}
+
 pub enum Event {
     Message(MessageEvent),
     Constant(ConstantEvent),
