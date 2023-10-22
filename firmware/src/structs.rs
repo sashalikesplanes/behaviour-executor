@@ -24,6 +24,7 @@ pub struct AttackDecayEvent {
     pub color: RGB8,
     pub attack_duration: f32,
     pub decay_duration: f32,
+    pub smoothing_factor: f32,
     pub strip_idx: usize,
     pub start_idx: usize,
     pub end_idx: usize,

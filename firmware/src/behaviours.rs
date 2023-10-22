@@ -91,12 +91,69 @@ pub fn paint_solid_pixel(
 
     let current_color = strip[event.pixel_idx as usize];
     strip[event.pixel_idx as usize] = RGB8 {
-        r: (event.color.r as f32 * intensity + current_color.r as f32).round().min(255.0) as u8,
-        g: (event.color.g as f32 * intensity + current_color.g as f32).round().min(255.0) as u8,
-        b: (event.color.b as f32 * intensity + current_color.b as f32).round().min(255.0) as u8,
+        r: (event.color.r as f32 * intensity + current_color.r as f32)
+            .round()
+            .min(255.0) as u8,
+        g: (event.color.g as f32 * intensity + current_color.g as f32)
+            .round()
+            .min(255.0) as u8,
+        b: (event.color.b as f32 * intensity + current_color.b as f32)
+            .round()
+            .min(255.0) as u8,
     };
 }
 
+pub fn constant_color_strip_200(color: RGB8, start_index: usize, end_index: usize) -> [RGB8; 200] {
+    let mut colors = [RGB8 { r: 0, g: 0, b: 0 }; 200];
+
+    for (i, current_color) in colors.iter_mut().enumerate() {
+        if i >= start_index && i <= end_index && i % 5 == 0 {
+            *current_color = color;
+        }
+    }
+
+    return colors;
+}
+
+pub fn paint_attack_decay_event(
+    strip: &mut [RGB8; STRIP_LENGTH],
+    event: &AttackDecayEvent,
+    elapsed_time_seconds: f32,
+) {
+    let total_duration = event.attack_duration + event.decay_duration;
+    let normalized_time = elapsed_time_seconds % total_duration;
+
+    let level = if normalized_time < event.attack_duration {
+        normalized_time / event.attack_duration
+    } else {
+        1.0 - (normalized_time - event.attack_duration) / event.decay_duration
+    };
+
+    let fill_idx = event.start_idx as f32 + level * (event.end_idx as f32 - event.start_idx as f32);
+
+    for idx in event.start_idx..=event.end_idx {
+        let dist_to_fill = (fill_idx - idx as f32).abs();
+        let intensity = if dist_to_fill < event.smoothing_factor {
+            1.0 - (dist_to_fill / event.smoothing_factor)
+        } else if idx as f32 <= fill_idx {
+            1.0
+        } else {
+            0.0
+        };
+
+        strip[idx as usize] = RGB8 {
+            r: (event.color.r as f32 * intensity + event.color.r as f32)
+                .round()
+                .min(255.0) as u8,
+            g: (event.color.g as f32 * intensity + event.color.g as f32)
+                .round()
+                .min(255.0) as u8,
+            b: (event.color.b as f32 * intensity + event.color.b as f32)
+                .round()
+                .min(255.0) as u8,
+        };
+    }
+}
 
 #[cfg(test)]
 mod tests {
