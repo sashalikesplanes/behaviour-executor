@@ -27,9 +27,15 @@ pub fn paint_message_event(
             let intensity = get_message_pixel_intensity(pixel_position, event_position, event);
             let current_color = strip[idx as usize];
             strip[idx as usize] = RGB8 {
-                r: (event.color.r as f32 * intensity + current_color.r as f32).round().min(255.0) as u8,
-                g: (event.color.g as f32 * intensity + current_color.g as f32).round().min(255.0) as u8,
-                b: (event.color.b as f32 * intensity + current_color.b as f32).round().min(255.0) as u8,
+                r: (event.color.r as f32 * intensity + current_color.r as f32)
+                    .round()
+                    .min(255.0) as u8,
+                g: (event.color.g as f32 * intensity + current_color.g as f32)
+                    .round()
+                    .min(255.0) as u8,
+                b: (event.color.b as f32 * intensity + current_color.b as f32)
+                    .round()
+                    .min(255.0) as u8,
             };
         }
     } else {
@@ -38,9 +44,15 @@ pub fn paint_message_event(
             let intensity = get_message_pixel_intensity(pixel_position, event_position, event);
             let current_color = strip[idx as usize];
             strip[idx as usize] = RGB8 {
-                r: (event.color.r as f32 * intensity + current_color.r as f32).round().min(255.0) as u8,
-                g: (event.color.g as f32 * intensity + current_color.g as f32).round().min(255.0) as u8,
-                b: (event.color.b as f32 * intensity + current_color.b as f32).round().min(255.0) as u8,
+                r: (event.color.r as f32 * intensity + current_color.r as f32)
+                    .round()
+                    .min(255.0) as u8,
+                g: (event.color.g as f32 * intensity + current_color.g as f32)
+                    .round()
+                    .min(255.0) as u8,
+                b: (event.color.b as f32 * intensity + current_color.b as f32)
+                    .round()
+                    .min(255.0) as u8,
             };
         }
     }
@@ -62,18 +74,6 @@ fn get_message_pixel_intensity(
         (((pixel_position - event_position).abs() / event.message_width as f32 * 2.0) * PI / 2.0)
             .cos();
     return intensity.max(0.0).min(1.0);
-}
-
-pub fn constant_color_strip_200(color: RGB8, start_index: usize, end_index: usize) -> [RGB8; 200] {
-    let mut colors = [RGB8 { r: 0, g: 0, b: 0 }; 200];
-
-    for (i, current_color) in colors.iter_mut().enumerate() {
-        if i >= start_index && i <= end_index && i % 5 == 0 {
-            *current_color = color;
-        }
-    }
-
-    return colors;
 }
 
 pub fn paint_solid_pixel(
