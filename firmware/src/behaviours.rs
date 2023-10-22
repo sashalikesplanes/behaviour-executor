@@ -1,12 +1,13 @@
 use core::f32::consts::PI;
 
-use crate::structs::{Event, EventWrapper, MessageEvent, ConstantEvent};
+use crate::structs::{AttackDecayEvent, ConstantEvent, Event, EventWrapper, MessageEvent};
 use crate::{new_strips::STRIP_LENGTH, structs::Duration};
 use heapless::Vec;
 use micromath::F32Ext;
 use smart_leds_trait::RGB8;
 
 const INTENSITY_THESHOLD: f32 = 0.05;
+const TIME_THRESHOLD: f32 = 0.05;
 
 pub fn paint_message_event(
     strip: &mut [RGB8; STRIP_LENGTH],
@@ -14,6 +15,10 @@ pub fn paint_message_event(
     start_time_seconds: f32,
     timer_seconds: f32,
 ) -> () {
+    if timer_seconds - start_time_seconds < TIME_THRESHOLD {
+        return;
+    }
+
     let event_position = (timer_seconds - start_time_seconds) * event.pace;
 
     if event.start_idx < event.end_idx {
