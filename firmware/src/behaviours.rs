@@ -11,10 +11,10 @@ const INTENSITY_THESHOLD: f32 = 0.05;
 pub fn paint_message_event(
     strip: &mut [RGB8; STRIP_LENGTH],
     event: &MessageEvent,
-    start_time: u32,
-    timer_counter: u32,
+    start_time_seconds: f32,
+    timer_seconds: f32,
 ) -> () {
-    let event_position = (timer_counter - start_time) as f32 * event.pace;
+    let event_position = (timer_seconds - start_time_seconds) * event.pace;
 
     if event.start_idx < event.end_idx {
         for idx in event.start_idx..event.end_idx {
@@ -39,23 +39,6 @@ pub fn paint_message_event(
             };
         }
     }
-}
-
-pub fn paint_solid_pixel(
-    strip: &mut [RGB8; STRIP_LENGTH],
-    event: &ConstantEvent,
-    start_time: u32,
-    timer_counter: u32,
-) -> () {
-    // TODO - smoothing
-    let intensity = 1.0;
-
-    let current_color = strip[event.pixel_idx as usize];
-    strip[event.pixel_idx as usize] = RGB8 {
-        r: (event.color.r as f32 * intensity + current_color.r as f32).round().min(255.0) as u8,
-        g: (event.color.g as f32 * intensity + current_color.g as f32).round().min(255.0) as u8,
-        b: (event.color.b as f32 * intensity + current_color.b as f32).round().min(255.0) as u8,
-    };
 }
 
 fn get_message_pixel_intensity(
@@ -87,6 +70,33 @@ pub fn constant_color_strip_200(color: RGB8, start_index: usize, end_index: usiz
 
     return colors;
 }
+
+pub fn paint_solid_pixel(
+    strip: &mut [RGB8; STRIP_LENGTH],
+    event: &ConstantEvent,
+    start_time_seconds: f32,
+    timer_seconds: f32,
+) -> () {
+    let elapsed = timer_seconds - start_time_seconds;
+
+    // TODO - smoothing
+    let intensity = if elapsed < event.fadein_duration as f32 {
+        (elapsed / event.fadein_duration as f32).powf(event.fade_power as f32)
+    } else if elapsed > event.duration - event.fadeout_duration as f32 {
+        ((event.duration - elapsed) / event.fadeout_duration as f32).powf(event.fade_power as f32)
+    } else {
+        1.0
+    };
+    let intensity = 1.0;
+
+    let current_color = strip[event.pixel_idx as usize];
+    strip[event.pixel_idx as usize] = RGB8 {
+        r: (event.color.r as f32 * intensity + current_color.r as f32).round().min(255.0) as u8,
+        g: (event.color.g as f32 * intensity + current_color.g as f32).round().min(255.0) as u8,
+        b: (event.color.b as f32 * intensity + current_color.b as f32).round().min(255.0) as u8,
+    };
+}
+
 
 #[cfg(test)]
 mod tests {

@@ -3,7 +3,7 @@ use smart_leds_trait::RGB8;
 
 pub struct ConstantEvent {
     pub color: RGB8,
-    pub duration: u32,
+    pub duration: f32,
     pub fadein_duration: u32,
     pub fadeout_duration: u32,
     pub fade_power: u8,
@@ -27,14 +27,14 @@ pub enum Event {
 
 pub struct EventWrapper {
     pub event: Event,
-    pub start_time: Option<u32>,
+    pub start_time: Option<f32>,
 }
 
 pub trait Duration {
     fn duration(&self) -> f32;
     fn active(&self) -> bool;
-    fn finished(&self, timer_count: u32) -> bool;
-    fn activate(&mut self, timer_count: u32);
+    fn finished(&self, timer_seconds: f32) -> bool;
+    fn activate(&mut self, timer_seconds: f32);
 }
 
 impl Duration for EventWrapper {
@@ -52,15 +52,15 @@ impl Duration for EventWrapper {
         self.start_time.is_some()
     }
 
-    fn finished(&self, timer_count: u32) -> bool {
+    fn finished(&self, timer_seconds: f32) -> bool {
         if let Some(start_time) = self.start_time {
-            timer_count as f32 > start_time as f32 + self.duration()
+            timer_seconds > start_time + self.duration()
         } else {
             false
         }
     }
 
-    fn activate(&mut self, timer_count: u32) {
-        self.start_time = Some(timer_count);
+    fn activate(&mut self, timer_seconds: f32) {
+        self.start_time = Some(timer_seconds);
     }
 }

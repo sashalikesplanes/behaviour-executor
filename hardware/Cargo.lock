@@ -23,6 +23,7 @@ dependencies = [
  "heapless",
  "itsybitsy_m4",
  "microjson",
+ "micromath",
  "panic-halt",
  "panic-probe",
  "panic-reset",

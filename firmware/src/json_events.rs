@@ -3,24 +3,25 @@ use crate::{
     structs::{ConstantEvent, Event, EventWrapper, MessageEvent},
 };
 use heapless::Vec;
+use micromath::F32Ext;
 use microjson::{JSONValue, JSONValueType};
 use smart_leds_trait::RGB8;
 
 pub fn add_events_from_json(
     events: &mut Vec<EventWrapper, MAX_EVENTS>,
     json_str: &str,
-    timer_count: u32,
+    timer_seconds: f32,
 ) -> () {
     let json = JSONValue::parse(json_str).unwrap();
     match json.get_key_value("type").unwrap().read_string().unwrap() {
         "message" => {
-            process_message_node(&json, timer_count, events, true);
+            process_message_node(&json, timer_seconds, events, true);
         }
         "clear" => {
             events.clear();
         }
         "constant" => {
-            process_constant_node(&json, timer_count, events, true);
+            process_constant_node(&json, timer_seconds, events, true);
         }
         _ => panic!("Unknown event type"),
     };
@@ -28,7 +29,7 @@ pub fn add_events_from_json(
 
 fn process_message_node(
     node: &JSONValue,
-    timer_count: u32,
+    timer_seconds: f32,
     events: &mut Vec<EventWrapper, MAX_EVENTS>,
     first_node: bool,
 ) {
@@ -44,13 +45,13 @@ fn process_message_node(
 
     if strip_idx == STRIP_INDICES.0 || strip_idx == STRIP_INDICES.1 {
         events.push(EventWrapper {
-            start_time: if first_node { Some(timer_count) } else { None },
+            start_time: if first_node { Some(timer_seconds) } else { None },
             event: Event::Message(parse_message_event(&node)),
         });
     }
 
     let next = node.get_key_value("next").unwrap();
-    process_message_node(&next, timer_count, events, false);
+    process_message_node(&next, timer_seconds, events, false);
 }
 
 fn parse_message_event(json: &JSONValue) -> MessageEvent {
@@ -94,7 +95,7 @@ fn parse_message_event(json: &JSONValue) -> MessageEvent {
 
 fn process_constant_node(
     node: &JSONValue,
-    timer_count: u32,
+    timer_seconds: f32,
     events: &mut Vec<EventWrapper, MAX_EVENTS>,
     first_node: bool,
 ) {
@@ -111,11 +112,11 @@ fn process_constant_node(
         .map(|x| x.read_integer().unwrap() as u8)
         .collect();
 
-    let duration: u32 = node
+    let duration: f32 = node
         .get_key_value("duration")
         .unwrap()
         .read_integer()
-        .unwrap() as u32;
+        .unwrap() as f32;
     let fadein_duration: u32 = node
         .get_key_value("fadein_duration")
         .unwrap()
@@ -146,7 +147,7 @@ fn process_constant_node(
 
             if strip_idx == STRIP_INDICES.0 || strip_idx == STRIP_INDICES.1 {
                 events.push(EventWrapper {
-                    start_time: Some(timer_count),
+                    start_time: Some(timer_seconds),
                     event: Event::Constant(ConstantEvent {
                         color: RGB8 {
                             r: color[0],

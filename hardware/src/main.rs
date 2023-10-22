@@ -8,7 +8,7 @@ use bsp::hal::{self, rtc, usb::UsbBus};
 use cortex_m::interrupt::free as disable_interrupts;
 use cortex_m::peripheral::NVIC;
 use firmware::json_events::add_events_from_json;
-use firmware::new_strips::{calculate_new_strips, MAX_EVENTS, SERIAL_NUM};
+use firmware::new_strips::{calculate_new_strips, MAX_EVENTS, SERIAL_NUM, CLOCK_MULTIPLIER};
 use firmware::starting_events::add_starting_events;
 use firmware::structs::EventWrapper;
 use hal::clock::GenericClockController;
@@ -16,6 +16,7 @@ use hal::pac::interrupt;
 use hal::pac::{CorePeripherals, Peripherals};
 use hal::prelude::*;
 use heapless::Vec;
+use micromath::F32Ext;
 use itsybitsy_m4 as bsp;
 use panic_halt as _;
 use smart_leds_trait::SmartLedsWrite;
@@ -107,11 +108,11 @@ fn main() -> ! {
             debug_led.toggle().unwrap();
         }
 
-        let timer_count: u32 = count_timer.count32();
+        let timer_seconds: f32 = count_timer.count32() as f32 * CLOCK_MULTIPLIER;
 
         if loop_counter == 100 {
             unsafe {
-                add_starting_events(&mut ACTIVE_EVENTS, timer_count);
+                add_starting_events(&mut ACTIVE_EVENTS, timer_seconds);
             }
         }
 
@@ -123,7 +124,7 @@ fn main() -> ! {
                 if JSON_BUF[pos] == b'\n' {
                     let json_str = core::str::from_utf8(&JSON_BUF[0..=pos]).unwrap();
 
-                    add_events_from_json(&mut ACTIVE_EVENTS, json_str, timer_count);
+                    add_events_from_json(&mut ACTIVE_EVENTS, json_str, timer_seconds);
 
                     JSON_BUF.copy_within(pos + 1..JSON_BUF_LEN, 0);
                     JSON_BUF_LEN -= pos + 1;
@@ -134,7 +135,7 @@ fn main() -> ! {
             }
         });
         // This should be safe as only the main loop uses ACTIVE_EVENTS
-        let strips = unsafe { calculate_new_strips(timer_count, &mut ACTIVE_EVENTS) };
+        let strips = unsafe { calculate_new_strips(timer_seconds, &mut ACTIVE_EVENTS) };
         neopixels.0.write(strips.strips.0.iter().cloned()).unwrap();
         neopixels.1.write(strips.strips.1.iter().cloned()).unwrap();
     }
