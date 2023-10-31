@@ -1,8 +1,9 @@
 use core::f32::consts::PI;
 
-use crate::structs::{AttackDecayEvent, ConstantEvent, Event, EventWrapper, MessageEvent};
+use crate::structs::{
+    AttackDecayEvent, ConstantEvent, HeartbeatEvent, MessageEvent,
+};
 use crate::{new_strips::STRIP_LENGTH, structs::Duration};
-use heapless::Vec;
 use micromath::F32Ext;
 use smart_leds_trait::RGB8;
 
@@ -25,35 +26,13 @@ pub fn paint_message_event(
         for idx in event.start_idx..event.end_idx {
             let pixel_position = (idx - event.start_idx) as f32;
             let intensity = get_message_pixel_intensity(pixel_position, event_position, event);
-            let current_color = strip[idx as usize];
-            strip[idx as usize] = RGB8 {
-                r: (event.color.r as f32 * intensity + current_color.r as f32)
-                    .round()
-                    .min(255.0) as u8,
-                g: (event.color.g as f32 * intensity + current_color.g as f32)
-                    .round()
-                    .min(255.0) as u8,
-                b: (event.color.b as f32 * intensity + current_color.b as f32)
-                    .round()
-                    .min(255.0) as u8,
-            };
+            strip[idx] = add_color(strip[idx], event.color, intensity);
         }
     } else {
         for idx in event.end_idx..event.start_idx {
             let pixel_position = -(idx as f32 - event.start_idx as f32);
             let intensity = get_message_pixel_intensity(pixel_position, event_position, event);
-            let current_color = strip[idx as usize];
-            strip[idx as usize] = RGB8 {
-                r: (event.color.r as f32 * intensity + current_color.r as f32)
-                    .round()
-                    .min(255.0) as u8,
-                g: (event.color.g as f32 * intensity + current_color.g as f32)
-                    .round()
-                    .min(255.0) as u8,
-                b: (event.color.b as f32 * intensity + current_color.b as f32)
-                    .round()
-                    .min(255.0) as u8,
-            };
+            strip[idx] = add_color(strip[idx], event.color, intensity);
         }
     }
 }
@@ -94,30 +73,45 @@ pub fn paint_solid_pixel(
     };
     let intensity = 1.0;
 
-    let current_color = strip[event.pixel_idx as usize];
-    strip[event.pixel_idx as usize] = RGB8 {
-        r: (event.color.r as f32 * intensity + current_color.r as f32)
-            .round()
-            .min(255.0) as u8,
-        g: (event.color.g as f32 * intensity + current_color.g as f32)
-            .round()
-            .min(255.0) as u8,
-        b: (event.color.b as f32 * intensity + current_color.b as f32)
-            .round()
-            .min(255.0) as u8,
-    };
+    strip[event.pixel_idx] = add_color(strip[event.pixel_idx], event.color, intensity)
 }
 
-pub fn constant_color_strip_200(color: RGB8, start_index: usize, end_index: usize) -> [RGB8; 200] {
-    let mut colors = [RGB8 { r: 0, g: 0, b: 0 }; 200];
+pub fn paint_heartbeat_pixel(
+    strip: &mut [RGB8; STRIP_LENGTH],
+    event: &HeartbeatEvent,
+    start_time_seconds: f32,
+    timer_seconds: f32,
+) -> () {
+    let elapsed = timer_seconds - start_time_seconds;
 
-    for (i, current_color) in colors.iter_mut().enumerate() {
-        if i >= start_index && i <= end_index && i % 5 == 0 {
-            *current_color = color;
-        }
+    if elapsed > event.duration {
+        return;
     }
 
-    return colors;
+    let time_in_loop = elapsed % event.loop_duration;
+    let mut intensity = event.dimness;
+
+    if time_in_loop < event.first_pulse_attack {
+        // First pulse attack
+        intensity += (1.0 - event.dimness) * (time_in_loop / event.first_pulse_attack).min(1.0);
+    } else if time_in_loop < event.first_pulse_attack + event.first_pulse_decay {
+        // First pulse decay
+        let decay_time = time_in_loop - event.first_pulse_attack;
+        intensity = 1.0 - (1.0 - event.dimness) * (decay_time / event.first_pulse_decay).min(1.0);
+    } else if time_in_loop
+        < event.first_pulse_attack + event.first_pulse_decay + event.second_pulse_attack
+    {
+        // Second pulse attack
+        let attack_time = time_in_loop - (event.first_pulse_attack + event.first_pulse_decay);
+        intensity += (1.0 - event.dimness) * (attack_time / event.second_pulse_attack).min(1.0);
+    } else if time_in_loop < event.first_pulse_decay + event.first_pulse_attack + event.second_pulse_attack + event.second_pulse_decay {
+        // Second pulse decay
+        let decay_time = time_in_loop
+            - (event.first_pulse_attack + event.first_pulse_decay + event.second_pulse_attack);
+        intensity = 1.0 - (1.0 - event.dimness) * (decay_time / event.second_pulse_decay).min(1.0);
+    }
+
+    strip[event.pixel_idx] = add_color(strip[event.pixel_idx], event.color, intensity)
 }
 
 pub fn paint_attack_decay_event(
@@ -146,18 +140,35 @@ pub fn paint_attack_decay_event(
             0.0
         };
 
-        strip[idx as usize] = RGB8 {
-            r: (event.color.r as f32 * intensity + event.color.r as f32)
-                .round()
-                .min(255.0) as u8,
-            g: (event.color.g as f32 * intensity + event.color.g as f32)
-                .round()
-                .min(255.0) as u8,
-            b: (event.color.b as f32 * intensity + event.color.b as f32)
-                .round()
-                .min(255.0) as u8,
-        };
+        strip[idx] = add_color(strip[idx], event.color, intensity);
     }
+}
+
+fn add_color(current_color: RGB8, new_color: RGB8, intensity: f32) -> RGB8 {
+    RGB8 {
+        r: (new_color.r as f32 * intensity + current_color.r as f32)
+            .round()
+            .min(255.0) as u8,
+        g: (new_color.g as f32 * intensity + current_color.g as f32)
+            .round()
+            .min(255.0) as u8,
+        b: (new_color.b as f32 * intensity + current_color.b as f32)
+            .round()
+            .min(255.0) as u8,
+    }
+}
+
+
+pub fn constant_color_strip_200(color: RGB8, start_index: usize, end_index: usize) -> [RGB8; 200] {
+    let mut colors = [RGB8 { r: 0, g: 0, b: 0 }; 200];
+
+    for (i, current_color) in colors.iter_mut().enumerate() {
+        if i >= start_index && i <= end_index && i % 5 == 0 {
+            *current_color = color;
+        }
+    }
+
+    return colors;
 }
 
 #[cfg(test)]

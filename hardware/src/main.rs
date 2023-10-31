@@ -136,8 +136,10 @@ fn main() -> ! {
         });
         // This should be safe as only the main loop uses ACTIVE_EVENTS
         let strips = unsafe { calculate_new_strips(timer_seconds, &mut ACTIVE_EVENTS) };
-        neopixels.0.write(strips.strips.0.iter().cloned()).unwrap();
-        neopixels.1.write(strips.strips.1.iter().cloned()).unwrap();
+        disable_interrupts(|_| {
+            neopixels.0.write(strips.strips.0.iter().cloned()).unwrap();
+            neopixels.1.write(strips.strips.1.iter().cloned()).unwrap();
+        })
     }
 }
 
@@ -149,7 +151,7 @@ static mut USB_SERIAL: Option<SerialPort<UsbBus>> = None;
 static mut ACTIVE_EVENTS: Vec<EventWrapper, MAX_EVENTS> = Vec::new();
 
 // Shared between main and USB interrupts
-const MAX_JSON_LEN: usize = 4096;
+const MAX_JSON_LEN: usize = 4096 * 2;
 static mut JSON_BUF: [u8; MAX_JSON_LEN] = [0; MAX_JSON_LEN];
 static mut JSON_BUF_LEN: usize = 0;
 

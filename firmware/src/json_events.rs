@@ -1,6 +1,6 @@
 use crate::{
     new_strips::{MAX_EVENTS, STRIP_INDICES},
-    structs::{ConstantEvent, Event, EventWrapper, MessageEvent},
+    structs::{ConstantEvent, Event, EventWrapper, MessageEvent, HeartbeatEvent},
 };
 use heapless::Vec;
 use micromath::F32Ext;
@@ -23,7 +23,10 @@ pub fn add_events_from_json(
         "constant" => {
             process_constant_node(&json, timer_seconds, events, true);
         }
-        _ => panic!("Unknown event type"),
+        "heartbeat" => {
+            process_heartbeat_node(&json, timer_seconds, events, true);
+        }
+        _ => {},
     };
 }
 
@@ -115,7 +118,7 @@ fn process_constant_node(
     let duration: f32 = node
         .get_key_value("duration")
         .unwrap()
-        .read_integer()
+        .read_float()
         .unwrap() as f32;
     let fadein_duration: u32 = node
         .get_key_value("fadein_duration")
@@ -165,3 +168,100 @@ fn process_constant_node(
             }
         })
 }
+
+fn process_heartbeat_node(
+    node: &JSONValue,
+    timer_seconds: f32,
+    events: &mut Vec<EventWrapper, MAX_EVENTS>,
+    first_node: bool,
+    ) {
+    // constant events never have a next
+    if node.value_type == JSONValueType::Null {
+        return;
+    }
+
+    let color: Vec<u8, 3> = node
+        .get_key_value("color")
+        .unwrap()
+        .iter_array()
+        .unwrap()
+        .map(|x| x.read_integer().unwrap() as u8)
+        .collect();
+
+    let duration: f32 = node
+        .get_key_value("duration")
+        .unwrap()
+        .read_float()
+        .unwrap() as f32;
+    let first_pulse_attack: f32 = node
+        .get_key_value("first_pulse_attack")
+        .unwrap()
+        .read_float()
+        .unwrap() as f32;
+    let first_pulse_decay: f32 = node
+        .get_key_value("first_pulse_decay")
+        .unwrap()
+        .read_float()
+        .unwrap() as f32;
+    let second_pulse_attack: f32 = node
+        .get_key_value("second_pulse_attack")
+        .unwrap()
+        .read_float()
+        .unwrap() as f32;
+    let second_pulse_decay: f32 = node
+        .get_key_value("second_pulse_decay")
+        .unwrap()
+        .read_float()
+        .unwrap() as f32;
+    let loop_duration: f32 = node
+        .get_key_value("loop_duration")
+        .unwrap()
+        .read_float()
+        .unwrap() as f32;
+    let dimness: f32 = node
+        .get_key_value("dimness")
+        .unwrap()
+        .read_float()
+        .unwrap() as f32;
+
+    // loop over the pixels array of the json
+    node.get_key_value("pixels")
+        .unwrap()
+        .iter_array()
+        .unwrap()
+        .for_each(|pixel| {
+            let pixel_idx: usize = pixel
+                .get_key_value("pixel_idx")
+                .unwrap()
+                .read_integer()
+                .unwrap() as usize;
+            let strip_idx: usize = pixel
+                .get_key_value("strip_idx")
+                .unwrap()
+                .read_integer()
+                .unwrap() as usize;
+
+            if strip_idx == STRIP_INDICES.0 || strip_idx == STRIP_INDICES.1 {
+                events.push(EventWrapper {
+                    start_time: Some(timer_seconds),
+                    event: Event::Heartbeat(HeartbeatEvent {
+                        color: RGB8 {
+                            r: color[0],
+                            g: color[1],
+                            b: color[2],
+                        },
+                        duration,
+                        first_pulse_attack,
+                        first_pulse_decay,
+                        second_pulse_attack,
+                        second_pulse_decay,
+                        loop_duration,
+                        dimness,
+                        pixel_idx,
+                        strip_idx,
+                    }),
+                });
+            }
+        })
+}
+

@@ -30,9 +30,25 @@ pub struct AttackDecayEvent {
     pub end_idx: usize,
 }
 
+pub struct HeartbeatEvent {
+    pub color: RGB8,
+    // total duration for which to play the effect
+    pub duration: f32,
+    pub strip_idx: usize,
+    pub pixel_idx: usize,
+    pub first_pulse_attack: f32,
+    pub first_pulse_decay: f32,
+    pub second_pulse_attack: f32,
+    pub second_pulse_decay: f32,
+    // how long until first pulse repeats
+    pub loop_duration: f32,
+    pub dimness: f32,
+}
+
 pub enum Event {
     Message(MessageEvent),
     Constant(ConstantEvent),
+    Heartbeat(HeartbeatEvent),
 }
 
 pub struct EventWrapper {
@@ -55,6 +71,7 @@ impl Duration for EventWrapper {
                     / e.pace
             },
             Event::Constant(e) => e.duration as f32,
+            Event::Heartbeat(e) => e.duration,
         }
     }
 
